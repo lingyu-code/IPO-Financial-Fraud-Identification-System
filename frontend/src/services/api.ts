@@ -10,6 +10,20 @@ const apiClient = axios.create({
     },
 });
 
+// Add a request interceptor to include the token in the headers
+apiClient.interceptors.request.use(
+    config => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers['Authorization'] = `Token ${token}`;
+        }
+        return config;
+    },
+    error => {
+        return Promise.reject(error);
+    }
+);
+
 // API service for IPO companies
 export const companyAPI = {
     // Get all companies

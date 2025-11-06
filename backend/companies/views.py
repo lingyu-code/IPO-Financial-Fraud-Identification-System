@@ -3,15 +3,28 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from .models import Company, RedFlag, FraudAnalysis
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Q
+from .models import Company, RedFlag, FraudAnalysis
 from .serializers import (
     CompanySerializer, RedFlagSerializer, FraudAnalysisSerializer,
     CompanyWithRedFlagsSerializer, RiskStatisticsSerializer
 )
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all().order_by('-created_at')
     
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'search', 'high_risk_companies']:
+            self.permission_classes = [AllowAny]
+        else:
+            self.permission_classes = [IsAuthenticated]
+        return super().get_permissions()
+
     def get_serializer_class(self):
         if self.action == 'list' or self.action == 'retrieve':
             return CompanyWithRedFlagsSerializer
@@ -166,6 +179,7 @@ class CompanyViewSet(viewsets.ModelViewSet):
 class RedFlagViewSet(viewsets.ModelViewSet):
     queryset = RedFlag.objects.all().order_by('-detected_at')
     serializer_class = RedFlagSerializer
+    permission_classes = [AllowAny]
     
     def get_queryset(self):
         queryset = RedFlag.objects.all()
@@ -178,6 +192,7 @@ class RedFlagViewSet(viewsets.ModelViewSet):
 class FraudAnalysisViewSet(viewsets.ModelViewSet):
     queryset = FraudAnalysis.objects.all().order_by('-analysis_date')
     serializer_class = FraudAnalysisSerializer
+    permission_classes = [AllowAny]
     
     def get_queryset(self):
         queryset = FraudAnalysis.objects.all()
@@ -188,6 +203,13 @@ class FraudAnalysisViewSet(viewsets.ModelViewSet):
 
 
 class FraudDetectionViewSet(viewsets.ViewSet):
+    def get_permissions(self):
+        if self.action == 'risk_statistics':
+            self.permission_classes = [AllowAny]
+        else:
+            self.permission_classes = [IsAuthenticated]
+        return super().get_permissions()
+
     @action(detail=False, methods=['post'])
     def detect_fraud(self, request):
         company_id = request.data.get('company_id')
